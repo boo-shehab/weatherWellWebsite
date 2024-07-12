@@ -1,49 +1,43 @@
-
 <script lang="ts" setup>
-import { emailRule, passwordRule } from '@/utils/rules'
+import { ref } from 'vue';
+import axiosIns from '@/plugins/axios';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
-const visible = ref(false)
-const isLoading = ref(false)
-const isValid = ref(false)
+const visible = ref(false);
+const isLoading = ref(false);
+const isValid = ref(false);
 const user = ref({
-email: '',
-password: ''
-})
+  username: 'john_doe',
+  password: 'StrongPassword123'
+});
 
 const form = ref(null);
 
-const postData = async() => {
+const postData = async () => {
   try {
     const isValid = await (form.value as any)?.validate();
     if (!isValid.valid) return;
     isLoading.value = true;
-
-    const response = await fetch('http://192.168.223.69:3000/api/auth/user/login', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(user.value),
+    const { data } = await axiosIns.get('user')
+    console.log(data)
+    const response = await axiosIns.post('user/login', {
+      password: user.value.password,
+      username: user.value.username
     });
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! Status: ${response.status}`);
-    }
-    const data = await response.json();
-    localStorage.setItem('access_token', data.access_token)
-    localStorage.setItem('user', JSON.stringify(data.userInfo))
-    router.push('/')
-
-
-  }catch(e) {
+    const userData = response.data;
+    localStorage.setItem('access_token', userData.token);
+    localStorage.setItem('user', JSON.stringify(userData.userInfo));
+    router.push('/');
+  } catch (e) {
     console.log(e);
-  }finally {
+  } finally {
     isLoading.value = false;
   }
 }
 </script>
+
 <template>
   <VContainer>
     <div class="loginContainer">
@@ -56,15 +50,15 @@ const postData = async() => {
           <VForm ref="form" v-model="isValid" @submit.prevent="postData">
 
             <VTextField
-              v-model="user.email"
+              v-model="user.username"
               label="Email"
               filled
               rounded="lg"
               dense
-              :rules="emailRule"
               variant="outlined"
               class="mt-2 mb-2"
-              flat/>
+              flat
+            />
 
             <VTextField
               v-model="user.password"
@@ -75,18 +69,21 @@ const postData = async() => {
               filled
               rounded="lg"
               dense
-              :rules="passwordRule"
               variant="outlined"
               class="mt-2 mb-2"
-              flat/>
+              flat
+            />
 
             <VBtn
               block
               :loading="isLoading"
               :disabled="!isValid"
-              class=" rounded-lg mt-4"
+              class="rounded-lg mt-4"
               type="submit"
-              color="primary">Login</VBtn>
+              color="primary"
+            >
+              Login
+            </VBtn>
           </VForm>
           <p class="mt-3">Don't have an account? <router-link to="/register">Register</router-link></p>
         </VCardText>
@@ -94,7 +91,6 @@ const postData = async() => {
     </div>
   </VContainer>
 </template>
-
 
 <style scoped>
 .loginContainer {

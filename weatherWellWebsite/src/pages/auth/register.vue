@@ -1,5 +1,6 @@
 
 <script lang="ts" setup>
+import axiosIns from '@/plugins/axios';
 import { emailRule, passwordRule, NamesRule, requiredRule } from '@/utils/rules'
 
 import { useRouter } from 'vue-router';
@@ -10,7 +11,7 @@ const user = ref({
   Email: '',
   Password: '',
   Location: '',
-  Purpose: ''
+  Purpose: []
 })
 const visible = ref(false)
 const confirmVisible = ref(false)
@@ -21,6 +22,7 @@ const isLocationLoading = ref(false);
 const confirmPassword = ref('')
 const purposes = ref([]);
 const locations = ref([])
+const controllers = ref([])
 const form = ref(null);
 
 const postData = async() => {
@@ -29,26 +31,21 @@ const postData = async() => {
     if (!isValid.valid) return;
     isLoading.value = true;
 
-    const response = await fetch('http://192.168.223.69:3000/api/users', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        name: user.value.Name,
-        email: user.value.Email,
+    const response = await axiosIns.post('user/register',{
+      name: user.value.Name,
+      email: user.value.Email,
         password: user.value.Password,
-        location: user.value.Location,
-        purpose: user.value.Purpose
-      }),
-    });
+        locationId: user.value.Location,
+      },
+    );
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! Status: ${response.status}`);
-    }
-    const data = await response.json();
+    const data = await response.data;
+    for(let i =0 ; i < user.value.Purpose.length; i++)
+    await axiosIns.post('user-disease', {
+      userId: data.userInfo.id,
+      diseaseId: user.value.Purpose[i]
+    })
 
-    console.log(data)
     localStorage.setItem('access_token', data.access_token)
     localStorage.setItem('user', JSON.stringify(data.userInfo))
 
@@ -65,17 +62,9 @@ const getPurpose = async () => {
 
 try {
   isPurposeLoading.value = true;
-  const response = await fetch('http://192.168.223.69:3000/api/purpose', {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+  const response = await axiosIns.get('disease')
 
-  if (!response.ok) {
-    throw new Error(`HTTP error! Status: ${response.status}`);
-  }
-  const data = await response.json();
+  const data = response.data;
   purposes.value = data
 
   console.log(purposes.value)
@@ -91,26 +80,32 @@ const getLocation = async () => {
 
   try {
     isLocationLoading.value = true;
-    const response = await fetch('http://192.168.223.69:3000/api/location', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+    const response = await axiosIns.get('location');
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! Status: ${response.status}`);
-    }
-    const data = await response.json();
+    const data = response.data;
     locations.value = data
     console.log(locations.value)
+    locations.value.map((loc) => {
+      getAllControler(loc)
+    })
 
   } catch(e) {
     console.log(e);
   } finally {
     isLocationLoading.value = false
   }
+}
 
+const getAllControler = async(loc) => {
+  try {
+    const {data} = await axiosIns.get(`controller?locationId=${loc.id}`);
+    for(let i = 0; i < data.length; i++) {
+      data[i].name = `${loc.name}, ${data[i].name}`
+    }
+    controllers.value.push(...data)
+  } catch(e) {
+    console.log(e)
+  }
 }
 
 onMounted(() => {
@@ -147,9 +142,9 @@ onMounted(() => {
               rounded="lg"
               dense
               :loading="isLocationLoading"
-              :items="locations"
+              :items="controllers"
               item-title="name"
-              item-value="name"
+              item-value="id"
               :rules="requiredRule"
               variant="outlined"
               class="mt-2 mb-2"
@@ -161,10 +156,12 @@ onMounted(() => {
                 filled
                 rounded="lg"
                 dense
+                multiple
+                chips
                 :loading="isPurposeLoading"
                 :items="purposes"
                 item-title="name"
-                item-value="name"
+                item-value="id"
                 :rules="requiredRule"
                 variant="outlined"
                 class="mt-2 mb-2"
