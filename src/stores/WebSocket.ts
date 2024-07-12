@@ -18,10 +18,10 @@ const getSensorsType = async() => {
   try {
     await axiosIns.get(`sensor/668fb1217a0550a1ee115b27`).then((data) => {
       data = data.data;
-      console.log(data)
+      console.log('sensor', data)
       for(let i =0; i < data.length; i++) {
         axiosIns.get(`sensor-type/${data[i].sensorTypeId}`).then(( sensorData) =>{
-          console.log(sensorData.data)
+          console.log('sensor type',sensorData.data)
           sensors.value.push({
             id: sensorData.data.id,
             name: sensorData.data.name,
@@ -48,7 +48,7 @@ const getSensorsType = async() => {
       connected.value = false;
       console.log('Disconnected from WebSocket server');
     });
-    socket.on('668fb0b27a0550a1ee115b26/sensorsData', (args) => {
+    socket.on('66910b09cd6f49dcfdb74906/sensorsData', (args) => {
       data.value = args;
       sensors.value.forEach((sensor, index) => {
         if (sensor.id === args.sensorTypeId) {
